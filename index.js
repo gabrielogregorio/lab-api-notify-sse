@@ -2,7 +2,7 @@ const express = require("express");
 const sse = require("sse-express");
 
 const app = express();
-const port = 3333;
+const port = 10000;
 
 app.get("/listen", sse, (req, res) => {
   const user = req.header("X-User");
