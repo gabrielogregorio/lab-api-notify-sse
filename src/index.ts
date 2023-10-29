@@ -2,37 +2,30 @@ import express, { Response, Request } from "express";
 // @ts-ignore
 import sse from "sse-express";
 import cors from "cors";
-
-interface IUsers {
-  name: string;
-}
+import { Observer, Subscriber } from "./observer";
+import { INotify, IUsers } from "./types";
+const sub: Subscriber = new Subscriber();
 
 const users: IUsers[] = [{ name: "ana" }, { name: "julia" }, { name: "v" }, { name: "lisa" }, { name: "cj" }];
+let notify: INotify[] = [];
 
-type Notify = {
-  title: string;
-  content: string;
-  users: IUsers[];
-};
-
-let notify: Notify[] = [];
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 const port = 10000;
 
-app.use(cors("*"));
-
 // @ts-ignore
-app.get("/listen", sse, (_req, res: Response & { sse: any }) => {
-  let number = 1;
+app.get("/listen", sse, (req, res: Response & { sse: any }) => {
+  const user = req.query.user as string;
 
-  setInterval(() => {
+  const userScriber = new Observer(user, (message) => {
     res.sse("notify", {
-      data: `notify number ${number}`,
+      message,
     });
-    number += 1;
-  }, 400);
+  });
+
+  sub.subscribe(userScriber);
 });
 
 app.get("/users", (_req, res) => {
@@ -44,22 +37,21 @@ app.get("/", (_req, res) => {
 });
 
 app.post("/notify", (req: Request<unknown, unknown, { title: string; content: string; users: IUsers[] }>, res: Response) => {
-  console.log(req.body, "aaa");
   const { title, content, users } = req.body;
+  const newNotify = { title, content, users, id: new Date().getTime().toString() };
 
-  notify.push({
-    title,
-    content,
-    users,
-  });
+  notify.push(newNotify);
 
-  console.log(notify);
+  sub.notifyAll(newNotify);
 
   res.status(201).send();
 });
 
 app.get("/notify", (req, res: Response) => {
-  const userName = (req.headers["user-name"] as string) || "";
+  const userName = req.headers["user"] as string;
+  if (!userName) {
+    return res.json([]);
+  }
 
   res.json(
     notify.filter((notifyItem) => {
