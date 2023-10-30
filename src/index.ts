@@ -64,6 +64,7 @@ app.get("/notify", (req, res: Response) => {
 
 app.get("/clearNotify", (_req, res) => {
   notify = [];
+  res.status(200).send();
 });
 
 app.listen(port, () => {
